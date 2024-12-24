@@ -63,8 +63,8 @@ void precision_test(void) {
 	long double max_diff = -9999999.0L;
 	size_t values_printed = 0;
 
-	long double range =  (long double)20.0L;
-	long double offset = (long double)20.0L;
+	long double range =  (long double)13.5L;
+	long double offset = (long double)14.0L;
 
 	for (size_t i = 0; i < points; i++) {
 
@@ -86,7 +86,7 @@ void precision_test(void) {
 			diff = -std::numeric_limits<long double>::infinity();
 		}
 		// char comp_sign = (y0 == y1) ? '=' : ((y0 > y1) ? '>' : '<');
-		if (diff > max_diff + 0.099999L || values_printed == 0 || (isnan(y0) != isnan(y1))) {
+		if (diff > max_diff + 0.99999L || values_printed == 0 || (isnan(y0) != isnan(y1))) {
 			
 			if (!std::isnan(diff) && diff > max_diff) {
 				max_diff = diff;
@@ -126,7 +126,7 @@ void graph_precision(const size_t points, const long double range, const long do
 			(long double)i, 0.0L, (long double)points,
 			offset - range,  offset + range
 		);
-		#if 1
+		#if 0
 		x = exp2(x);
 		#endif
 

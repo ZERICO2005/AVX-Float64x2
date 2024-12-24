@@ -46,6 +46,8 @@
 
 #include "Float64x2_input_limits.hpp"
 
+#include "Float64x2_LUT.hpp"
+
 //------------------------------------------------------------------------------
 // Float64x2 math.h functions
 //------------------------------------------------------------------------------
@@ -264,10 +266,10 @@ Float64x2 exp(const Float64x2& x) {
 		return static_cast<Float64x2>(1.0);
 	}
 	if (x == static_cast<fp64>(1.0)) {
-		return LDF::const_e<Float64x4>();
+		return LDF::const_e<Float64x2>();
 	}
 	if (x == static_cast<fp64>(-1.0)) {
-		return LDF::const_inv_e<Float64x4>();
+		return LDF::const_inv_e<Float64x2>();
 	}
 
 	fp64 m;
@@ -1404,7 +1406,12 @@ Float64x2 erf(const Float64x2& x) {
 	>(x);
 }
 
+#if 0
+
 Float64x2 erfc(const Float64x2& x) {
+	// if (x > 26.7) {
+	// 	return erfc((fp64)x);
+	// }
 	if (x > LDF::LDF_Input_Limits::erfc_max<Float64x2, fp64>()) {
 		std::feraiseexcept(FE_UNDERFLOW);
 		return static_cast<fp64>(0.0);
@@ -1414,6 +1421,123 @@ Float64x2 erfc(const Float64x2& x) {
 		256
 	>(x);
 }
+
+#else
+
+static const Float64x2* erfc_lut_numer[] = {
+	erfc_pade_0d5_numer ,
+	erfc_pade_1d0_numer ,
+	erfc_pade_2d0_numer ,
+	erfc_pade_4d0_numer ,
+	erfc_pade_8d0_numer ,
+	erfc_pade_16d0_numer
+};
+
+static constexpr size_t erfc_len_numer[] = {
+	sizeof(erfc_pade_0d5_numer ) / sizeof(Float64x2),
+	sizeof(erfc_pade_1d0_numer ) / sizeof(Float64x2),
+	sizeof(erfc_pade_2d0_numer ) / sizeof(Float64x2),
+	sizeof(erfc_pade_4d0_numer ) / sizeof(Float64x2),
+	sizeof(erfc_pade_8d0_numer ) / sizeof(Float64x2),
+	sizeof(erfc_pade_16d0_numer) / sizeof(Float64x2)
+};
+
+static_assert(
+	sizeof(erfc_lut_numer) / sizeof(erfc_lut_numer[0]) ==
+	sizeof(erfc_len_numer) / sizeof(erfc_len_numer[0]),
+	"erfc_lut_numer is missing data"
+);
+
+static const Float64x2* erfc_lut_denom[] = {
+	erfc_pade_0d5_denom ,
+	erfc_pade_1d0_denom ,
+	erfc_pade_2d0_denom ,
+	erfc_pade_4d0_denom ,
+	erfc_pade_8d0_denom ,
+	erfc_pade_16d0_denom
+};
+
+static constexpr size_t erfc_len_denom[] = {
+	sizeof(erfc_pade_0d5_denom ) / sizeof(Float64x2),
+	sizeof(erfc_pade_1d0_denom ) / sizeof(Float64x2),
+	sizeof(erfc_pade_2d0_denom ) / sizeof(Float64x2),
+	sizeof(erfc_pade_4d0_denom ) / sizeof(Float64x2),
+	sizeof(erfc_pade_8d0_denom ) / sizeof(Float64x2),
+	sizeof(erfc_pade_16d0_denom) / sizeof(Float64x2)
+};
+
+static_assert(
+	sizeof(erfc_lut_denom) / sizeof(erfc_lut_denom[0]) ==
+	sizeof(erfc_len_denom) / sizeof(erfc_len_denom[0]),
+	"erfc_lut_denom is missing data"
+);
+
+static constexpr fp64 erfc_offset[] = {
+	0.5,
+	1.0,
+	2.0,
+	4.0,
+	8.0,
+	16.0
+};
+
+Float64x2 erfc(const Float64x2& x) {
+	if (isnan(x)) {
+		return x;
+	}
+	if (x < 0.5) {
+		return 1.0 - erf(x);
+	}
+
+	size_t LUT_index = 0;
+
+	if      (x < 0.75 ) { LUT_index = 0; }
+	else if (x < 1.5  ) { LUT_index = 1; }
+	else if (x < 3.0  ) { LUT_index = 2; }
+	else if (x < 6.0  ) { LUT_index = 3; }
+	else if (x < 12.0 ) { LUT_index = 4; }
+	else if (x < 27.25) { LUT_index = 5; }
+	else { 
+		std::feraiseexcept(FE_UNDERFLOW);
+		return 0.0;
+	}
+
+	const Float64x2* lut_numer = erfc_lut_numer[LUT_index];
+	const Float64x2* lut_denom = erfc_lut_denom[LUT_index];
+	const size_t len_numer = erfc_len_numer[LUT_index];
+	const size_t len_denom = erfc_len_denom[LUT_index];
+
+	Float64x2 w = x - erfc_offset[LUT_index];
+
+	Float64x2 numer, denom;
+	
+	numer = lut_numer[0];
+	for (size_t i = 1; i < len_numer; i++) {
+		numer = numer * w + lut_numer[i];
+	}
+
+	denom = lut_denom[0];
+	for (size_t i = 1; i < len_denom; i++) {
+		denom = denom * w + lut_denom[i];
+	}
+	
+	Float64x2 y = numer / (denom * exp(square(x)));
+	return y;
+
+	#if 0
+	if (x <= 25.75) {
+		Float64x2 y = sc / (sd * exp(square(x)));
+
+		return y;
+	}
+	Float64x2 LbE = LDF::const_log2e<Float64x2>();
+	Float64x2 y = exp2(log2(sc / sd) - square(x) * LbE);
+
+	return y;
+	#endif
+}
+
+#endif
 
 //------------------------------------------------------------------------------
 // Float64x2 tgamma

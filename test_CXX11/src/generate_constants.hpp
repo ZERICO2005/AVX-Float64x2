@@ -596,3 +596,44 @@ void generate_boost_constants(const char* name) {
 		output_boost_constant<FloatX, FloatBase>(index++, name, num);
 	}
 }
+
+template<typename FloatX, typename FloatBase>
+static void output_text_constant(mpfr_t dst, const char* text) {
+	mpfr_set_str(dst, text, 10, MPFR_RNDN);
+	FloatX temp = mpfr_get_type<FloatX>(dst, MPFR_RNDN);
+	const FloatBase* output = reinterpret_cast<FloatBase*>(&temp);
+	const int precision = std::numeric_limits<FloatBase>::max_digits10 + 1;
+	const int width = 7 + precision;
+
+	printf("\t{");
+	char dst_buf[999];
+	for (int i = 0; i < LDF::LDF_Type_Info<FloatX>::FloatBase_Count; i++) {
+		if (i != 0) { printf(", "); }
+		snprintf(dst_buf, sizeof(dst_buf), "%+-*.*e", width, precision, output[i]);
+		printf("%s", dst_buf);
+	};
+	printf("},\n");
+}
+
+template<typename FloatX, typename FloatBase>
+void constants_from_text(
+	const char* src[], size_t len,
+	const char* name, const char* label,
+	mpfr_prec_t precision
+) {
+	printf("static constexpr %s %s[] = {\n", name, label);
+	mpfr_t dst;
+	mpfr_init2(dst, precision);
+	#if 0
+		for (size_t i = 0; i < len; i++) {
+			output_text_constant<FloatX, FloatBase>(dst, src[i]);
+		}
+	#else
+		/* reverse */
+		for (size_t i = len; --i < len;) {
+			output_text_constant<FloatX, FloatBase>(dst, src[i]);
+		}
+	#endif
+	mpfr_clear(dst);
+	printf("};\n");
+}

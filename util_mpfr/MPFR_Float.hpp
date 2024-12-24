@@ -27,7 +27,7 @@ typedef double fp64;
 
 #define PRImpfr "R"
 
-constexpr mpfr_prec_t MPFR_PRECISION = 1024;
+constexpr mpfr_prec_t MPFR_PRECISION = 192;
 constexpr mpfr_rnd_t MPFR_ROUND = MPFR_RNDN;
 
 // template<mpfr_prec_t fpX>
