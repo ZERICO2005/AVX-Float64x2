@@ -9,7 +9,6 @@
 #ifndef FLOATNXN_PRECISION_TEST_HPP
 #define FLOATNXN_PRECISION_TEST_HPP
 
-#include <_mingw_stat64.h>
 #include <cstdio>
 #include <math.h>
 #include <cmath>

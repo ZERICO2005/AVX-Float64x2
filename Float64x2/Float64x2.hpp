@@ -1124,8 +1124,8 @@ namespace std {
 
 /* Trigonometry */
 
-	Float64x2  sin (const Float64x2& x);
-	Float64x2  cos (const Float64x2& x);
+	Float64x2 sin(const Float64x2& x);
+	Float64x2 cos(const Float64x2& x);
 
 	/**
 	 * @brief Simultaneously calculates `sin(x)` and `cos(x)`. Faster than
@@ -1167,6 +1167,29 @@ namespace std {
 	 */
 	Float64x2 atan2(const Float64x2& y, const Float64x2& x);
 
+/* Special Trigonometry */
+
+	/** @brief Calculates sin(pi * x) */
+	Float64x2 sinpi(const Float64x2& x);
+
+	/** @brief Calculates cos(pi * x) */
+	Float64x2 cospi(const Float64x2& x);
+
+	/** @brief Calculates tan(pi * x) */
+	Float64x2 tanpi(const Float64x2& x);
+
+	/** @brief Calculates 1/pi * asin(x) */
+	Float64x2 asinpi(const Float64x2& x);
+
+	/** @brief Calculates 1/pi * acos(x) */
+	Float64x2 acospi(const Float64x2& x);
+
+	/** @brief Calculates 1/pi * atan(x) */
+	Float64x2 atanpi(const Float64x2& x);
+
+	/** @brief Calculates 1/pi * atan2(y, x) */
+	Float64x2 atan2pi(const Float64x2& y, const Float64x2& x);
+
 /* Logarithms and Exponents */
 
 	Float64x2 log(const Float64x2& x);
@@ -1180,12 +1203,12 @@ namespace std {
 	Float64x2 log1p(const Float64x2& x);
 
 	/** @note Naive implementation of log2(x) */
-	inline Float64x2 log2(const Float64x2 x) {
+	inline Float64x2 log2(const Float64x2& x) {
 		return log(x) * LDF::const_log2e<Float64x2>();
 	}
 
 	/** @note Naive implementation of log10(x) */
-	inline Float64x2 log10(const Float64x2 x) {
+	inline Float64x2 log10(const Float64x2& x) {
 		return log(x) * LDF::const_log10e<Float64x2>();
 	}
 
@@ -1193,7 +1216,7 @@ namespace std {
 	 * @brief Calculates log(|x|) in base FLT_RADIX
 	 * @note Naive implementation of logb(x)
 	 */
-	inline Float64x2 logb(const Float64x2 x) {
+	inline Float64x2 logb(const Float64x2& x) {
 		return log(fabs(x)) / log(static_cast<Float64x2>(std::numeric_limits<fp64>::radix));
 	}
 
@@ -1207,12 +1230,12 @@ namespace std {
 	Float64x2 expm1(const Float64x2& x);
 
 	/** @note Naive implementation of exp2(x). Calls `exp(x * ln(2))` */
-	inline Float64x2 exp2(const Float64x2 x) {
+	inline Float64x2 exp2(const Float64x2& x) {
 		return exp(x * LDF::const_ln2<Float64x2>());
 	}
 
 	/** @note Naive implementation of exp10(x). Calls `exp(x * ln(10))` */
-	inline Float64x2 exp10(const Float64x2 x) {
+	inline Float64x2 exp10(const Float64x2& x) {
 		return exp(x * LDF::const_ln10<Float64x2>());
 	}
 

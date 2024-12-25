@@ -960,11 +960,120 @@ void sincos(const Float64x2& x, Float64x2& p_sin, Float64x2& p_cos) {
 	}
 }
 
+//------------------------------------------------------------------------------
+// Float64x2 Special Trigonometry
+//------------------------------------------------------------------------------
+
+	Float64x2 sinpi(const Float64x2& x) {
+		if (!isfinite(x)) {
+			if (isnan(x)) {
+				return x;
+			}
+			return std::numeric_limits<Float64x2>::quiet_NaN();
+		}
+
+		if (isequal_zero(x)) {
+			return x;
+		}
+
+		const fp64 max_safe_int = scalbn(x, std::numeric_limits<Float64x2>::digits);
+		
+		if (fabs(x) >= max_safe_int) {
+			// behaviour at sin(pi * 0)
+			return static_cast<Float64x2>(0.0);
+		}
+		
+		Float64x2 x_mod = fmod(x, static_cast<Float64x2>(2.0));
+		
+		if (x_mod == -1.5) { return  1.0; }
+		if (x_mod == -1.0) { return  0.0; }
+		if (x_mod == -0.5) { return -1.0; }
+		if (x_mod ==  0.0) { return  0.0; }
+		if (x_mod ==  0.5) { return  1.0; }
+		if (x_mod ==  1.0) { return  0.0; }
+		if (x_mod ==  1.5) { return -1.0; }
+		
+		return sin(x * LDF::const_pi<Float64x2>());
+	}
+
+	Float64x2 cospi(const Float64x2& x) {
+		if (!isfinite(x)) {
+			if (isnan(x)) {
+				return x;
+			}
+			return std::numeric_limits<Float64x2>::quiet_NaN();
+		}
+
+		if (isequal_zero(x)) {
+			return 1.0;
+		}
+
+		const fp64 max_safe_int = scalbn(x, std::numeric_limits<Float64x2>::digits);
+		
+		if (fabs(x) >= 2.0 * max_safe_int) {
+			// behaviour at cos(pi * 0)
+			return static_cast<Float64x2>(1.0);
+		}
+		
+		Float64x2 x_mod = fmod(x, static_cast<Float64x2>(2.0));
+		
+		if (x_mod == -1.5) { return  0.0; }
+		if (x_mod == -1.0) { return -1.0; }
+		if (x_mod == -0.5) { return  0.0; }
+		if (x_mod ==  0.0) { return  1.0; }
+		if (x_mod ==  0.5) { return  0.0; }
+		if (x_mod ==  1.0) { return -1.0; }
+		if (x_mod ==  1.5) { return  0.0; }
+		
+		return cos(x * LDF::const_pi<Float64x2>());
+	}
+
+	Float64x2 tanpi(const Float64x2& x) {
+		if (!isfinite(x)) {
+			if (isnan(x)) {
+				return x;
+			}
+			return std::numeric_limits<Float64x2>::quiet_NaN();
+		}
+		
+		if (isequal_zero(x)) {
+			// preserves signed zero
+			return x;
+		}
+
+		const fp64 max_safe_int = scalbn(x, std::numeric_limits<Float64x2>::digits);
+		
+		if (fabs(x) >= max_safe_int) {
+			// behaviour at tan(pi * 0)
+			return static_cast<Float64x2>(0.0);
+		}
+		
+		Float64x2 x_mod = fmod(x, static_cast<Float64x2>(1.0));
+		
+		if (x_mod == -0.5 ) {
+			std::feraiseexcept(FE_DIVBYZERO);
+			return std::numeric_limits<Float64x2>::quiet_NaN();
+		}
+		if (x_mod ==  0.25) { return -1.0; }
+		if (x_mod ==  0.0 ) { return  0.0; }
+		if (x_mod ==  0.25) { return  1.0; }
+		if (x_mod ==  0.5 ) {
+			std::feraiseexcept(FE_DIVBYZERO);
+			return std::numeric_limits<Float64x2>::quiet_NaN();
+		}
+		
+		return tan(x * LDF::const_pi<Float64x2>());
+	}
+
+//------------------------------------------------------------------------------
+// Float64x2 Inverse Trigonometry
+//------------------------------------------------------------------------------
+
 /** 
  * @author Taken from libQD dd_real.cpp which can be found under a
  * LBNL-BSD license from https://www.davidhbailey.com/dhbsoftware/
  */
-Float64x2 atan(const Float64x2& y) {
+static Float64x2 internal_atan(const Float64x2& y, bool div_pi) {
 	/* Strategy: Instead of using Taylor series to compute 
 		arctan, we instead use Newton's iteration to solve
 		the equation
@@ -987,11 +1096,11 @@ Float64x2 atan(const Float64x2& y) {
 	}
 
 	if (y == static_cast<fp64>(1.0)) {
-		return LDF::const_pi4<Float64x2>();
+		return div_pi ? LDF::const_pi4<Float64x2>() : static_cast<Float64x2>(0.25);
 	}
 
 	if (y == static_cast<fp64>(-1.0)) {
-		return -LDF::const_pi4<Float64x2>();
+		return div_pi ? -LDF::const_pi4<Float64x2>() : static_cast<Float64x2>(-0.25);
 	}
 
 	Float64x2 r = sqrt(static_cast<fp64>(1.0) + square(y));
@@ -1012,6 +1121,9 @@ Float64x2 atan(const Float64x2& y) {
 		z -= (xx - cos_z) / sin_z;
 	}
 
+	if (div_pi) {
+		return z * LDF::const_inv_pi<Float64x2>();
+	}
 	return z;
 }
 
@@ -1019,7 +1131,7 @@ Float64x2 atan(const Float64x2& y) {
  * @author Taken from libQD dd_real.cpp which can be found under a
  * LBNL-BSD license from https://www.davidhbailey.com/dhbsoftware/
  */
-Float64x2 atan2(const Float64x2& y, const Float64x2& x) {
+static Float64x2 internal_atan2(const Float64x2& y, const Float64x2& x, bool div_pi) {
 	/* Strategy: Instead of using Taylor series to compute 
 		arctan, we instead use Newton's iteration to solve
 		the equation
@@ -1046,21 +1158,29 @@ Float64x2 atan2(const Float64x2& y, const Float64x2& x) {
 			return std::numeric_limits<Float64x2>::quiet_NaN();
 		}
 
-		return (isgreater_zero(y)) ? LDF::const_pi2<Float64x2>() : -LDF::const_pi2<Float64x2>();
+		return isgreater_zero(y) ?
+			(div_pi ? static_cast<Float64x2>( 0.5) :  LDF::const_pi2<Float64x2>()) :
+			(div_pi ? static_cast<Float64x2>(-0.5) : -LDF::const_pi2<Float64x2>());
 	} else if (isequal_zero(y)) {
-		return (isgreater_zero(x)) ? Float64x2(0.0) : LDF::const_pi<Float64x2>();
+		return isgreater_zero(x) ?
+			Float64x2(0.0) :
+			(div_pi ? Float64x2(1.0) : LDF::const_pi<Float64x2>());
 	}
 
 	if (x == y) {
-		return (isgreater_zero(y)) ? LDF::const_pi4<Float64x2>() : -LDF::const_3pi4<Float64x2>();
+		return isgreater_zero(y) ?
+			(div_pi ? static_cast<Float64x2>( 0.25) :  LDF::const_pi4<Float64x2>()) :
+			(div_pi ? static_cast<Float64x2>(-0.75) : -LDF::const_3pi4<Float64x2>());
 	}
 
 	if (x == -y) {
-		return (isgreater_zero(y)) ? LDF::const_3pi4<Float64x2>() : -LDF::const_pi4<Float64x2>();
+		return isgreater_zero(y) ?
+			(div_pi ? static_cast<Float64x2>( 0.75) :  LDF::const_3pi4<Float64x2>()) :
+			(div_pi ? static_cast<Float64x2>(-0.25) : -LDF::const_pi4<Float64x2>());
 	}
 
 	/* Compute double precision approximation to atan. */
-	const Float64x2 radius = sqrt(square(x) + square(y));
+	const Float64x2 radius = hypot(x, y);
 	Float64x2 z = atan2(y.hi, x.hi);
 	Float64x2 sin_z, cos_z;
 	sincos(z, sin_z, cos_z);
@@ -1073,6 +1193,9 @@ Float64x2 atan2(const Float64x2& y, const Float64x2& x) {
 		z -= ((x / radius) - cos_z) / sin_z;
 	}
 
+	if (div_pi) {
+		return z * LDF::const_inv_pi<Float64x2>();
+	}
 	return z;
 }
 
@@ -1080,7 +1203,7 @@ Float64x2 atan2(const Float64x2& y, const Float64x2& x) {
  * @author Taken from libQD dd_real.cpp which can be found under a
  * LBNL-BSD license from https://www.davidhbailey.com/dhbsoftware/
  */
-Float64x2 asin(const Float64x2& x) {
+static Float64x2 internal_asin(const Float64x2& x, bool div_pi) {
 	if (isequal_zero(x)) {
 		return static_cast<fp64>(0.0);
 	}
@@ -1093,7 +1216,10 @@ Float64x2 asin(const Float64x2& x) {
 	}
 
 	if (abs_x == static_cast<fp64>(1.0)) {
-		return (isgreater_zero(x)) ? LDF::const_pi2<Float64x2>() : -LDF::const_pi2<Float64x2>();
+		
+		return isgreater_zero(x) ?
+			(div_pi ? static_cast<Float64x2>( 0.5) :  LDF::const_pi2<Float64x2>()) :
+			(div_pi ? static_cast<Float64x2>(-0.5) : -LDF::const_pi2<Float64x2>());
 	}
 
 	return atan2(x, sqrt(static_cast<fp64>(1.0) - square(x)));
@@ -1103,7 +1229,7 @@ Float64x2 asin(const Float64x2& x) {
  * @author Taken from libQD dd_real.cpp which can be found under a
  * LBNL-BSD license from https://www.davidhbailey.com/dhbsoftware/
  */
-Float64x2 acos(const Float64x2& x) {
+static Float64x2 internal_acos(const Float64x2& x, bool div_pi) {
 	if (isequal_zero(x)) {
 		return LDF::const_pi2<Float64x2>();
 	}
@@ -1116,11 +1242,49 @@ Float64x2 acos(const Float64x2& x) {
 	}
 
 	if (abs_x == static_cast<fp64>(1.0)) {
-		return (isgreater_zero(x)) ? Float64x2(0.0) : LDF::const_pi<Float64x2>();
+		return isgreater_zero(x) ?
+			Float64x2(0.0) :
+			(div_pi ? Float64x2(1.0) : LDF::const_pi<Float64x2>());
 	}
 
 	return atan2(sqrt(static_cast<fp64>(1.0) - square(x)), x);
 }
+
+Float64x2 asin(const Float64x2& x) {
+	return internal_asin(x, false);
+}
+
+Float64x2 acos(const Float64x2& x) {
+	return internal_acos(x, false);
+}
+
+Float64x2 atan(const Float64x2& x) {
+	return internal_atan(x, false);
+}
+
+Float64x2 atan2(const Float64x2& y, const Float64x2& x) {
+	return internal_atan2(y, x, false);
+}
+
+Float64x2 asinpi(const Float64x2& x) {
+	return internal_asin(x, true);
+}
+
+Float64x2 acospi(const Float64x2& x) {
+	return internal_acos(x, true);
+}
+
+Float64x2 atanpi(const Float64x2& x) {
+	return internal_atan(x, true);
+}
+
+Float64x2 atan2pi(const Float64x2& y, const Float64x2& x) {
+	return internal_atan2(y, x, true);
+}
+
+//------------------------------------------------------------------------------
+// Float64x2 Hyperbolic Trigonometry
+//------------------------------------------------------------------------------
 
 /** 
  * @author Taken from libQD dd_real.cpp which can be found under a
